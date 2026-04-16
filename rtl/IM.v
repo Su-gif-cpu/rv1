@@ -21,20 +21,15 @@
 
 `include "ctrl_signal_def.v"
 module IM(InsMemRW, addr, clk, Ins);
-    input               InsMemRW;       //指令存储单元信号
+    input               InsMemRW;       //指令存储单元信号（保留接口兼容性）
     input       [11:2]  addr;           //指令存储器地址
     input               clk;            //时钟信号（SRAM宏替换准备）
     output reg [31:0] Ins;             //取得的指令
     reg [31:0] memory[0:1023];
 
-    // 修改为同步读（SRAM宏替换准备）
+    // 修改为纯同步读（不依赖InsMemRW，每周期都读）
     always @(posedge clk) begin
-        if (InsMemRW) begin
-            Ins <= memory[addr];        //同步读指令
-        end
-        else begin
-            Ins <= 32'h0;               //InsMemRW=0时输出0
-        end
+        Ins <= memory[addr];        //同步读指令
     end
 
 endmodule

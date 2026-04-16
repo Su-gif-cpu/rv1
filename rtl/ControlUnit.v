@@ -25,11 +25,12 @@ module ControlUnit(
 );
 
     // 状态定义
-    localparam S_IF  = 3'd0;  // Instruction Fetch
-    localparam S_ID  = 3'd1;  // Instruction Decode
-    localparam S_EX  = 3'd2;  // Execute
-    localparam S_MEM = 3'd3;  // Memory Access
-    localparam S_WB  = 3'd4;  // Write Back
+    localparam S_IF  = 3'd0;  // Instruction Fetch (给出地址)
+    localparam S_IF2 = 3'd1;  // Instruction Fetch 2 (等待IM同步读)
+    localparam S_ID  = 3'd2;  // Instruction Decode
+    localparam S_EX  = 3'd3;  // Execute
+    localparam S_MEM = 3'd4;  // Memory Access
+    localparam S_WB  = 3'd5;  // Write Back
 
     reg [2:0] state, next_state;
 
@@ -44,7 +45,8 @@ module ControlUnit(
     // 次态逻辑
     always @(*) begin
         case (state)
-            S_IF:  next_state = S_ID;
+            S_IF:  next_state = S_IF2;
+            S_IF2: next_state = S_ID;
             S_ID:  next_state = S_EX;
             S_EX:  begin
                 case (opcode)
@@ -77,11 +79,18 @@ module ControlUnit(
 
         case (state)
             S_IF: begin
-                // 取指：IM 读指令，IR 锁存，PC 更新
+                // 取指阶段1：给出地址，启动IM读
                 InsMemRW = 1;
                 IRWrite  = 1;
-                PCWrite  = 1;
-                NPCOp    = `NPC_PC;  // PC+4
+                NPCOp    = `NPC_PC;  // PC+4（但暂不更新PC）
+            end
+
+            S_IF2: begin
+                // 取指阶段2：等待IM同步读完成，IR锁存数据
+                InsMemRW = 1;
+                IRWrite  = 1;
+                PCWrite  = 1;  // 更新PC
+                NPCOp    = `NPC_PC;
             end
 
             S_ID: begin
