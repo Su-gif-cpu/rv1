@@ -29,7 +29,7 @@ module PC(clk, rst, PCWrite, NPC, PC);
     always @(posedge clk or posedge rst) begin
         // reset
         if (rst) begin
-            PC <= 32'h0000_2000; //复位后PC的值
+            PC <= 32'h0000_2000;
         end
         else if (PCWrite) begin
             PC <= NPC;           //修改指令地址

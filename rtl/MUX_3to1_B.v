@@ -8,10 +8,10 @@ module MUX_3to1_B(X, Y, Z, control, out);
 
     always @ (X or Y or Z or control) begin
         case(control)
-            `ALUSrcB_B      : out = X;                          //选择X
-            `ALUSrcB_Imm    : out = Y;                          //选择Y
-            `ALUSrcB_Offset : out = {{20{Z[11]}}, Z};           //Bug M1 修复：正确的符号扩展
-            `ALUSrcB_else   : out = X;                          //选择X
+            `ALUSrcB_B      : out = X;              //选择X
+            `ALUSrcB_Imm    : out = Y;              //选择Y
+            `ALUSrcB_Offset : out = $signed(Z);     //选择Z
+            `ALUSrcB_else   : out = X;              //选择X
         endcase
     end
 
