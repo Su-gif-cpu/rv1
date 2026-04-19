@@ -137,12 +137,16 @@ module riscv(clk, rst);
     wire [4:0] id_ex_rs1    = id_ex_instr[19:15];
     wire [4:0] id_ex_rs2    = id_ex_instr[24:20];
     wire [4:0] id_ex_rd_w   = id_ex_instr[11:7];
-    // 仅 EX 级 lw（地址尚未进 ex_mem）必须停顿；MEM 级 lw 可经组合读 RD 旁路，无需再停一拍。
+    // DM 同步读后，EX 级和 MEM 级的 lw 都需要停顿
     wire stall_ex_hzd = id_ex_memread && !(id_ex_rd_w === 5'd0) && (
         (id_ex_rd_w === if_id_rs1) ||
         (if_id_uses_rs2 && (id_ex_rd_w === if_id_rs2))
     );
-    assign stall_ld = stall_ex_hzd;
+    wire stall_mem_hzd = ex_mem_memread && !(ex_mem_rd === 5'd0) && (
+        (ex_mem_rd === if_id_rs1) ||
+        (if_id_uses_rs2 && (ex_mem_rd === if_id_rs2))
+    );
+    assign stall_ld = stall_ex_hzd || stall_mem_hzd;
 
     // B 型目标（与 NPC 一致）；branch_taken_id 在 rs1/rs2 旁路之后赋值。
     wire [12:1] b12_if      = {out_ins[31], out_ins[7], out_ins[30:25], out_ins[11:8]};
@@ -157,7 +161,7 @@ module riscv(clk, rst);
 
     wire [31:0] wb_value_mux;
     assign wb_value_mux =
-        (mem_wb_wdsel === `WDSel_FromMEM) ? mem_wb_rdata :
+        (mem_wb_wdsel === `WDSel_FromMEM) ? RD :
         (mem_wb_wdsel === `WDSel_FromPC)   ? mem_wb_pc4 :
         mem_wb_alu;
 
@@ -174,8 +178,6 @@ module riscv(clk, rst);
         (id_ex_regwrite && !id_ex_memread && (if_id_rs1 === id_ex_rd_w) &&
             !(id_ex_rd_w === 5'd0)) ? id_ex_bypass_val :
         (ex_mem_regwrite && (if_id_rs1 === ex_mem_rd) && !(ex_mem_rd === 5'd0) &&
-         ex_mem_memread) ? RD :
-        (ex_mem_regwrite && (if_id_rs1 === ex_mem_rd) && !(ex_mem_rd === 5'd0) &&
          ~ex_mem_memread) ? ex_mem_alu :
         (mem_wb_regwrite && (if_id_rs1 === mem_wb_rd) && !(mem_wb_rd === 5'd0)) ?
             wb_value_mux : RD1;
@@ -184,8 +186,6 @@ module riscv(clk, rst);
         (if_id_rs2 === 5'd0) ? 32'd0 :
         (id_ex_regwrite && !id_ex_memread && (if_id_rs2 === id_ex_rd_w) &&
             !(id_ex_rd_w === 5'd0)) ? id_ex_bypass_val :
-        (ex_mem_regwrite && (if_id_rs2 === ex_mem_rd) && !(ex_mem_rd === 5'd0) &&
-         ex_mem_memread) ? RD :
         (ex_mem_regwrite && (if_id_rs2 === ex_mem_rd) && !(ex_mem_rd === 5'd0) &&
          ~ex_mem_memread) ? ex_mem_alu :
         (mem_wb_regwrite && (if_id_rs2 === mem_wb_rd) && !(mem_wb_rd === 5'd0)) ?
@@ -296,7 +296,7 @@ module riscv(clk, rst);
     );
 
     MUX_3to1_LMD U_MUX_3to1_LMD (
-        .X(mem_wb_alu), .Y(mem_wb_rdata), .Z(mem_wb_pc4[31:2]),
+        .X(mem_wb_alu), .Y(RD), .Z(mem_wb_pc4[31:2]),
         .control(mem_wb_wdsel), .out(WD)
     );
 
