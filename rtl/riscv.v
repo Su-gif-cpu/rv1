@@ -91,7 +91,7 @@ module riscv(clk, rst);
     );
 
     IR U_IR (
-        .clk(clk), .IRWrite(ir_we), .in_ins(ir_din), .out_ins(out_ins)
+        .clk(clk), .rst(rst), .IRWrite(ir_we), .in_ins(ir_din), .out_ins(out_ins)
     );
 
     wire if_id_uses_rs2 =
